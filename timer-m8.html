@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M8 Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --card: #181818;
+    --border: #2a2a2a;
+    --accent: #f5c518;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(245,197,24,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .logo {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+    opacity: 0.8;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  select, input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    appearance: none;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+  }
+
+  select option { background: #1a1a1a; }
+
+  .timer-display {
+    text-align: center;
+    padding: 40px 0 32px;
+    position: relative;
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 24px;
+  }
+
+  .timer-ring svg {
+    transform: rotate(-90deg);
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  .timer-ring-bg circle {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 3;
+  }
+
+  .timer-ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 502;
+    stroke-dashoffset: 502;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s;
+  }
+
+  .timer-ring.running .timer-ring-progress {
+    stroke: var(--accent);
+  }
+
+  .timer-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .timer-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -1px;
+    transition: color 0.3s;
+  }
+
+  .timer-ring.running .timer-value {
+    color: var(--accent);
+  }
+
+  .timer-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .btn-main {
+    width: 100%;
+    padding: 16px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .btn-start {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-start:hover { background: #ffd83d; transform: translateY(-1px); }
+
+  .btn-stop {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+  }
+
+  .btn-stop:hover { background: rgba(239,68,68,0.1); }
+
+  .btn-main:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.2s infinite;
+  }
+
+  .btn-start .dot { display: none; }
+  .btn-stop .dot { display: block; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+
+  .log-section { margin-top: 8px; }
+
+  .log-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-item-left { flex: 1; overflow: hidden; }
+  .log-item-name {
+    font-weight: 700;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-item-client {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .log-item-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-left: 12px;
+    flex-shrink: 0;
+  }
+
+  .log-item-status {
+    font-size: 10px;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  .status-ok { color: var(--green); }
+  .status-err { color: var(--red); }
+  .status-saving { color: var(--muted); }
+
+  .empty-log {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  .notion-token-section {
+    margin-bottom: 20px;
+  }
+
+  .token-toggle {
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    background: none;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    padding: 0;
+  }
+
+  .token-toggle:hover { color: var(--accent); }
+
+  .token-fields {
+    margin-top: 14px;
+    display: none;
+  }
+
+  .token-fields.open { display: block; }
+
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: -6px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+
+  .hint a { color: var(--accent); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .tag-instagram { background: rgba(131,58,180,0.2); color: #c084fc; }
+  .tag-cardapio { background: rgba(239,68,68,0.2); color: #f87171; }
+  .tag-metaads { background: rgba(59,130,246,0.2); color: #60a5fa; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    transition: transform 0.3s ease;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="logo">⏱ M8 Timer</div>
+
+<div class="card">
+  <div class="card-title">Configuração</div>
+
+  <div class="notion-token-section">
+    <button class="token-toggle" onclick="toggleToken()">🔑 Configurar token do Notion</button>
+    <div class="token-fields" id="tokenFields">
+      <input type="password" id="notionToken" placeholder="Token de integração (secret_...)" style="margin-top:12px;" />
+      <p class="hint">
+        Crie uma integração em <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a> e compartilhe o banco <strong>"Operação por Cliente"</strong> com ela. O banco já está pré-configurado ✅ — só precisa do token!
+      </p>
+      <button class="btn-main btn-start" style="margin-bottom:0" onclick="saveConfig()">Salvar token</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="card-title">Nova sessão</div>
+
+  <select id="cliente">
+    <option value="">Selecione o cliente...</option>
+    <option value="American Burguer">🍔 American Burguer</option>
+    <option value="Barbearia Igor">💈 Barbearia Igor</option>
+    <option value="Borda Brasileira PT">🍕 Borda Brasileira PT</option>
+    <option value="Brazilian Burger House">🍔 Brazilian Burger House</option>
+    <option value="Hc Burguer">🍔 Hc Burguer</option>
+    <option value="No Japa Sushi">🍣 No Japa Sushi</option>
+    <option value="Pirapizza">🍕 Pirapizza</option>
+    <option value="Pizzaria Pachecco">🍕 Pizzaria Pachecco</option>
+    <option value="Pizzaria Sabor Brasileiro">🍕 Pizzaria Sabor Brasileiro</option>
+    <option value="Rei do Barbecue">🥩 Rei do Barbecue</option>
+    <option value="Sampa Smash">🍔 Sampa Smash</option>
+  </select>
+
+  <select id="grupo">
+    <option value="">Selecione o tipo de serviço...</option>
+    <option value="Meta Ads">📣 Meta Ads</option>
+    <option value="Edição de Vídeo">🎬 Edição de Vídeo</option>
+    <option value="Análise / Relatório">📊 Análise / Relatório</option>
+    <option value="Conteúdo / Posts">📸 Conteúdo / Posts</option>
+  </select>
+
+  <input type="text" id="demanda" placeholder="Descreva a demanda (ex: Criar capas de destaque)" />
+
+  <div class="timer-display">
+    <div class="timer-ring" id="timerRing">
+      <svg width="180" height="180" viewBox="0 0 180 180">
+        <g class="timer-ring-bg">
+          <circle cx="90" cy="90" r="80"/>
+        </g>
+        <circle class="timer-ring-progress" id="ringProgress" cx="90" cy="90" r="80"/>
+      </svg>
+      <div class="timer-text">
+        <div class="timer-value" id="timerDisplay">00:00:00</div>
+        <div class="timer-label" id="timerStatus">pronto</div>
+      </div>
+    </div>
+
+    <button class="btn-main btn-start" id="mainBtn" onclick="toggleTimer()">
+      <span>▶ Iniciar</span>
+    </button>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;" id="logCard">
+  <div class="log-section">
+    <div class="log-title">Sessões registradas</div>
+    <div id="logList"><div class="empty-log">Nenhuma sessão ainda</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let running = false;
+  let startTime = null;
+  let elapsed = 0;
+  let timerInterval = null;
+  let sessions = [];
+
+  // Load config — DB ID pré-configurado automaticamente
+  const PRESET_DB_ID = '020ee0104a54478fbd7765d2c9411b3e';
+
+  let config = {
+    token: localStorage.getItem('m8_token') || '',
+    dbId: PRESET_DB_ID
+  };
+
+  if (config.token) document.getElementById('notionToken').value = config.token;
+
+  function toggleToken() {
+    document.getElementById('tokenFields').classList.toggle('open');
+  }
+
+  function saveConfig() {
+    const t = document.getElementById('notionToken').value.trim();
+    if (!t) { showToast('Cole o token da integração', 'error'); return; }
+    localStorage.setItem('m8_token', t);
+    config.token = t;
+    document.getElementById('tokenFields').classList.remove('open');
+    showToast('✅ Token salvo!', 'success');
+  }
+
+  function toggleTimer() {
+    if (!running) startTimer();
+    else stopTimer();
+  }
+
+  function startTimer() {
+    const cliente = document.getElementById('cliente').value;
+    const grupo = document.getElementById('grupo').value;
+    const demanda = document.getElementById('demanda').value.trim();
+
+    if (!cliente || !grupo || !demanda) {
+      showToast('Preencha cliente, grupo e demanda', 'error');
+      return;
+    }
+
+    running = true;
+    startTime = Date.now();
+    elapsed = 0;
+
+    document.getElementById('timerRing').classList.add('running');
+    document.getElementById('timerStatus').textContent = 'em andamento';
+    document.getElementById('mainBtn').innerHTML = '<span class="dot"></span><span>⏹ Parar e salvar</span>';
+    document.getElementById('mainBtn').classList.remove('btn-start');
+    document.getElementById('mainBtn').classList.add('btn-stop');
+    document.getElementById('cliente').disabled = true;
+    document.getElementById('grupo').disabled = true;
+    document.getElementById('demanda').disabled = true;
+
+    timerInterval = setInterval(updateDisplay, 1000);
+  }
+
+  async function stopTimer() {
+    running = false;
+    clearInterval(timerInterval);
+
+    const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const cliente = document.getElementById('cliente').value;
+    const grupo = document.getElementById('grupo').value;
+    const demanda = document.getElementById('demanda').value.trim();
+
+    document.getElementById('timerRing').classList.remove('running');
+    document.getElementById('timerStatus').textContent = 'salvando...';
+    document.getElementById('mainBtn').disabled = true;
+
+    const session = { cliente, grupo, demanda, seconds: totalSeconds, status: 'saving', ts: new Date() };
+    sessions.unshift(session);
+    renderLog();
+
+    const saved = await saveToNotion(cliente, grupo, demanda, totalSeconds);
+    session.status = saved ? 'ok' : 'error';
+    renderLog();
+
+    // Reset
+    document.getElementById('timerDisplay').textContent = '00:00:00';
+    document.getElementById('timerStatus').textContent = 'pronto';
+    document.getElementById('ringProgress').style.strokeDashoffset = 502;
+    document.getElementById('mainBtn').innerHTML = '<span>▶ Iniciar</span>';
+    document.getElementById('mainBtn').classList.add('btn-start');
+    document.getElementById('mainBtn').classList.remove('btn-stop');
+    document.getElementById('mainBtn').disabled = false;
+    document.getElementById('cliente').disabled = false;
+    document.getElementById('grupo').disabled = false;
+    document.getElementById('demanda').disabled = false;
+    document.getElementById('demanda').value = '';
+
+    showToast(saved ? '✅ Salvo no Notion!' : '⚠️ Erro ao salvar. Verifique o token.', saved ? 'success' : 'error');
+  }
+
+  function updateDisplay() {
+    const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('timerDisplay').textContent = formatTime(totalSeconds);
+
+    // Ring animation: rotate every 60s
+    const minutes = totalSeconds % 3600;
+    const dashoffset = 502 - (502 * (minutes % 60) / 60);
+    document.getElementById('ringProgress').style.strokeDashoffset = dashoffset;
+  }
+
+  function formatTime(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  async function saveToNotion(cliente, grupo, demanda, seconds) {
+    if (!config.token || !config.dbId) return false;
+
+    const today = new Date().toISOString().split('T')[0];
+    const minutes = Math.round(seconds / 60);
+    const title = `[${cliente}] ${demanda} (${minutes}min)`;
+
+    try {
+      const res = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.token}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify({
+          parent: { database_id: config.dbId },
+          properties: {
+            'Demanda': { title: [{ text: { content: demanda } }] },
+            'Cliente': { select: { name: cliente } },
+            'Grupo': { select: { name: grupo } },
+            'Tempo Gasto (min)': { number: minutes },
+            'Data': { date: { start: today } }
+          }
+        })
+      });
+      return res.ok;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  function renderLog() {
+    const el = document.getElementById('logList');
+    if (!sessions.length) { el.innerHTML = '<div class="empty-log">Nenhuma sessão ainda</div>'; return; }
+
+    el.innerHTML = sessions.map(s => {
+      const tagClass = s.grupo === 'Instagram' ? 'tag-instagram' : s.grupo === 'Cardápio' ? 'tag-cardapio' : 'tag-metaads';
+      const statusHtml = s.status === 'ok'
+        ? '<span class="log-item-status status-ok">✓ salvo</span>'
+        : s.status === 'error'
+          ? '<span class="log-item-status status-err">✗ erro</span>'
+          : '<span class="log-item-status status-saving">...</span>';
+      return `
+        <div class="log-item">
+          <div class="log-item-left">
+            <div class="log-item-name">${s.demanda}<span class="tag ${tagClass}">${s.grupo}</span></div>
+            <div class="log-item-client">${s.cliente}</div>
+          </div>
+          <div class="log-item-time">${formatTime(s.seconds)}</div>
+          ${statusHtml}
+        </div>`;
+    }).join('');
+  }
+
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
